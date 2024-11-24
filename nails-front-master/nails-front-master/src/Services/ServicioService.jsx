@@ -1,70 +1,30 @@
 import axios from "axios";
-import { API_URL } from "../App.config";
 
-const urlBase = API_URL + "/serviciosPageQuery";
+const BASE_URL = "http://localhost:4000/api/servicios";
 
-// Obtener una lista paginada de servicios
-export async function obtenerServicios(consulta, page, pageSize) {
+export const obtenerTodosLosServicios = async () => {
   try {
-    const { data } = await axios({
-      method: "GET",
-      url: `${urlBase}?consulta=${consulta}&page=${page}&size=${pageSize}`,
-    });
+    const { data } = await axios.get(BASE_URL);
     return data;
   } catch (error) {
-    console.error("Error buscando servicios:", error);
-    throw error;
+    console.error("Error obteniendo servicios:", error);
+    return [];
   }
-}
+};
 
-// Obtener un servicio por su ID
-export async function obtenerServicio(id) {
+export const obtenerServicio = async (id) => {
   try {
-    const { data } = await axios({
-      method: "GET",
-      url: `${API_URL}/servicio/${id}`,
-    });
+    const { data } = await axios.get(`${BASE_URL}/${id}`);
     return data;
   } catch (error) {
-    console.error("Error al buscar un servicio", error);
-    throw error;
+    console.error("Error obteniendo el servicio:", error);
   }
-}
+};
 
-// Crear o actualizar un servicio
-export async function newServicio(servicio) {
+export const newServicio = async (servicio) => {
   try {
-    if (servicio.id > 0) {
-      const { data } = await axios({
-        method: "PUT",
-        url: `${API_URL}/servicios/${servicio.id}`,
-        data: servicio,
-      });
-      return data;
-    } else {
-      const { data } = await axios({
-        method: "POST",
-        url: `${API_URL}/servicios`,
-        data: servicio,
-      });
-      return data;
-    }
+    await axios.post(BASE_URL, servicio);
   } catch (error) {
-    console.error("Error al guardar el servicio:", error);
-    throw error;
+    console.error("Error creando el servicio:", error);
   }
-}
-
-// Eliminar un servicio
-export async function eliminarServicio(id) {
-  try {
-    const { data } = await axios({
-      method: "PUT",
-      url: `${API_URL}/servicioEliminar/${id}`,
-    });
-    return data;
-  } catch (error) {
-    console.error("Error al eliminar el servicio:", error);
-    throw error;
-  }
-}
+};

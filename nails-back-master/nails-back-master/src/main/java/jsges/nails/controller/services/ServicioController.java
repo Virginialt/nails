@@ -1,34 +1,31 @@
 package jsges.nails.controller.services;
-import jsges.nails.DTO.articulos.ArticuloVentaDTO;
+
+import jsges.nails.DTO.Organizacion.ClienteDTO;
 import jsges.nails.DTO.servicios.ItemServicioDTO;
 import jsges.nails.DTO.servicios.ServicioDTO;
-import jsges.nails.domain.articulos.ArticuloVenta;
 import jsges.nails.domain.servicios.ItemServicio;
 import jsges.nails.domain.servicios.Servicio;
-import jsges.nails.domain.servicios.TipoServicio;
 import jsges.nails.excepcion.RecursoNoEncontradoExcepcion;
-import jsges.nails.service.organizacion.IClienteService;
-import jsges.nails.service.servicios.IItemServicioService;
+import jsges.nails.mapper.ItemServicioMapper;
+import jsges.nails.mapper.ServicioMapper;
 import jsges.nails.service.servicios.IServicioService;
 import jsges.nails.service.servicios.ITipoServicioService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jsges.nails.service.organizacion.IClienteService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.ArrayList;
+
 import java.util.List;
 
 @RestController
-@RequestMapping(value="${path_mapping}")
-@CrossOrigin(value="${path_cross}")
+@RequestMapping(value = "${path_mapping}")
+@CrossOrigin(value = "${path_cross}")
 public class ServicioController {
-    private static final Logger logger = LoggerFactory.getLogger(ServicioController.class);
+
     @Autowired
-    private IServicioService modelService;
+    private IServicioService servicioService;
+
     @Autowired
     private IClienteService clienteService;
 
@@ -36,77 +33,47 @@ public class ServicioController {
     private ITipoServicioService tipoServicioService;
 
     @Autowired
-    private IItemServicioService itemServicioService;
+    private ItemServicioMapper itemServicioMapper;
 
-    public ServicioController() {
+    @Autowired
+    private ServicioMapper servicioMapper;
 
-    }
-    @GetMapping({"/servicios"})
+    @GetMapping("/servicios")
     public List<ServicioDTO> getAll() {
-        List<Servicio> servicios = this.modelService.listar();
-        List<ServicioDTO> lista =new ArrayList<>();
-        for (Servicio elemento : servicios) {
-            System.out.println("1"); // Debug: Verificar el contenido
-            List<ItemServicio> items = itemServicioService.listar();
-            System.out.println("3"); // Debug: Verificar el contenido
-            ServicioDTO ser  = new ServicioDTO(elemento,items);
-            lista.add(ser);
-        }
-        return lista;
+        return servicioService.listar().stream()
+                .map(servicio -> ServicioMapper.toDTO(servicio, servicioService.obtenerItems(servicio.getId())))
+                .toList();
     }
+
     @GetMapping("/servicio/{id}")
-    public ResponseEntity<ServicioDTO> getPorId(@PathVariable Integer id){
-        logger.info("entra  en buscar servicio"  );
-        Servicio model = modelService.buscarPorId(id);
-        if(model == null)
-            throw new RecursoNoEncontradoExcepcion("No se encontro el id: " + id);
-
-        List<ItemServicio>listItems = itemServicioService.buscarPorServicio(model.getId());
-        ServicioDTO modelDTO  = new ServicioDTO(model,listItems);
-        logger.info(modelDTO.toString());
-        return ResponseEntity.ok(modelDTO);
-    }
-
-
-
-
-    @GetMapping({"/serviciosPageQuery"})
-    public ResponseEntity<Page<ServicioDTO>> getItems(@RequestParam(defaultValue = "") String consulta, @RequestParam(defaultValue = "0") int page,
-                                                           @RequestParam(defaultValue = "${max_page}") int size) {
-        List<Servicio> listado = modelService.listar(consulta);
-        List<ServicioDTO> listadoDTO    =  new ArrayList<>();
-        listado.forEach((model) -> {
-            listadoDTO.add(new ServicioDTO(model));
-        });
-        Page<ServicioDTO> bookPage = modelService.findPaginated(PageRequest.of(page, size),listadoDTO);
-        return ResponseEntity.ok().body(bookPage);
+    public ResponseEntity<ServicioDTO> getPorId(@PathVariable Integer id) {
+        Servicio servicio = servicioService.buscarPorId(id);
+        if (servicio == null) {
+            throw new RecursoNoEncontradoExcepcion("No se encontró el servicio con ID " + id);
+        }
+        List<ItemServicio> items = servicioService.obtenerItems(id);
+        return ResponseEntity.ok(ServicioMapper.toDTO(servicio, items));
     }
 
     @PostMapping("/servicios")
-    public Servicio agregar(@RequestBody ServicioDTO model){
-
-        Integer idCliente = model.cliente;
-
-        Servicio newModel =  new Servicio();
-        newModel.setCliente(clienteService.buscarPorId(idCliente));
-        newModel.setFechaRegistro(model.fechaDocumento);
-        newModel.setFechaRealizacion(model.fechaDocumento);
-        newModel.setEstado(0);
-
-        Servicio servicioGuardado= modelService.guardar(newModel);
-        for (ItemServicioDTO elemento : model.listaItems) {
-            double precio = elemento.getPrecio();
-            logger.info("entra for");
-
-            TipoServicio tipoServicio = tipoServicioService.buscarPorId(elemento.getTipoServicioId());
-            String observacion = elemento.getObservaciones();
-            ItemServicio item = new ItemServicio(newModel, tipoServicio, precio,observacion);
-
-            itemServicioService.guardar(item);
-
+    public ResponseEntity<ServicioDTO> agregar(@RequestBody ServicioDTO model) {
+        // Convertir ClienteDTO a Cliente usando ClienteMapper
+        ClienteDTO cliente = clienteService.buscarPorId(model.cliente);
+        if (cliente == null) {
+            throw new RecursoNoEncontradoExcepcion("Cliente no encontrado");
         }
 
-        return servicioGuardado;
+        // Crear el nuevo servicio
+        Servicio servicio = ServicioMapper.fromDTO(model, cliente);
+        Servicio nuevoServicio = servicioService.guardar(servicio);
+
+        // Guardar los items asociados al servicio
+        List<ItemServicio> items = model.listaItems.stream()
+                .map(dto -> ItemServicioMapper.fromDTO(dto, nuevoServicio, tipoServicioService.buscarPorId(dto.getTipoServicioId())))
+                .toList();
+
+        servicioService.guardarItems(items, nuevoServicio);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ServicioMapper.toDTO(nuevoServicio, items));
     }
 }
-

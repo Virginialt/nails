@@ -20,7 +20,7 @@ public class ItemServicioDTO {
 
     }
 
-    public ItemServicioDTO() {
+    public ItemServicioDTO(Integer integer, Double double1, Object object) {
 
     }
 }

@@ -57,4 +57,9 @@ public class ItemServicio {
         this.precio = precio;
         this.observacion=observacion;
     }
+
+    public Object getObservaciones() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getObservaciones'");
+    }
 }

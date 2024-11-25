@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
 @Component
 public class ClienteMapper {
 
@@ -31,6 +32,7 @@ public class ClienteMapper {
         return cliente;
     }
 
+    // Método para convertir una lista de Clientes a una lista de ClienteDTOs
     public List<ClienteDTO> toDTOList(List<Cliente> clientes) {
         return clientes.stream().map(this::toDTO).collect(Collectors.toList());
     }
